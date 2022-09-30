@@ -1,7 +1,7 @@
 use bufstream::BufStream;
 use chrono::{DateTime, FixedOffset};
 use imap_proto::Response;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::ops::{Deref, DerefMut};
 use std::str;
@@ -122,6 +122,10 @@ fn validate_sequence_set(
             })
         })?;
     Ok(value)
+}
+
+fn _quote(arg: &str) -> String {
+    format!("\"{}\"", arg.replace("\\", "\\\\").replace("\"", "\\\""))
 }
 
 /// An authenticated IMAP session providing the usual IMAP commands. This type is what you get from
@@ -388,6 +392,43 @@ impl<T: Read + Write> Client<T> {
             self.run_command_and_check_ok(&format!("LOGIN {} {}", u, p)),
             self
         );
+
+        Ok(Session::new(self.conn))
+    }
+
+    /// .
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if .
+    pub fn login_with_id(
+        mut self,
+        username: impl AsRef<str>,
+        password: impl AsRef<str>,
+        parameters: &HashMap<&str, &str>,
+    ) -> ::std::result::Result<Session<T>, (Error, Client<T>)> {
+        let synopsis = "LOGIN";
+        let u =
+            ok_or_unauth_client_err!(validate_str(synopsis, "username", username.as_ref()), self);
+        let p =
+            ok_or_unauth_client_err!(validate_str(synopsis, "password", password.as_ref()), self);
+
+        ok_or_unauth_client_err!(
+            self.run_command_and_check_ok(&format!("LOGIN {} {}", u, p)),
+            self
+        );
+
+        if !parameters.is_empty() {
+            let args: Vec<String> = parameters
+                .iter()
+                .map(|(k, v)| format!("{} {}", _quote(k), _quote(v)))
+                .collect();
+
+            ok_or_unauth_client_err!(
+                self.run_command_and_check_ok(&format!("ID ({})", args.join(" "))),
+                self
+            );
+        }
 
         Ok(Session::new(self.conn))
     }
