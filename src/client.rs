@@ -125,10 +125,6 @@ fn validate_sequence_set(
     Ok(value)
 }
 
-fn _quote(arg: &str) -> String {
-    format!("\"{}\"", arg.replace("\\", "\\\\").replace("\"", "\\\""))
-}
-
 /// An authenticated IMAP session providing the usual IMAP commands. This type is what you get from
 /// a succesful login attempt.
 ///
@@ -390,43 +386,6 @@ impl<T: Read + Write> Client<T> {
         Ok(Session::new(self.conn))
     }
 
-    /// .
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if .
-    pub fn login_with_id(
-        mut self,
-        username: impl AsRef<str>,
-        password: impl AsRef<str>,
-        parameters: &HashMap<&str, &str>,
-    ) -> ::std::result::Result<Session<T>, (Error, Client<T>)> {
-        let synopsis = "LOGIN";
-        let u =
-            ok_or_unauth_client_err!(validate_str(synopsis, "username", username.as_ref()), self);
-        let p =
-            ok_or_unauth_client_err!(validate_str(synopsis, "password", password.as_ref()), self);
-
-        ok_or_unauth_client_err!(
-            self.run_command_and_check_ok(&format!("LOGIN {} {}", u, p)),
-            self
-        );
-
-        if !parameters.is_empty() {
-            let args: Vec<String> = parameters
-                .iter()
-                .map(|(k, v)| format!("{} {}", _quote(k), _quote(v)))
-                .collect();
-
-            ok_or_unauth_client_err!(
-                self.run_command_and_check_ok(&format!("ID ({})", args.join(" "))),
-                self
-            );
-        }
-
-        Ok(Session::new(self.conn))
-    }
-
     /// Authenticate with the server using the given custom `authenticator` to handle the server's
     /// challenge.
     ///
@@ -531,6 +490,28 @@ impl<T: Read + Write> Client<T> {
                 return Ok(Session::new(self.conn));
             }
         }
+    }
+
+    /// Provides a facility to advertise information on what programs are being
+    /// used along with contact information. (RFC 2971)
+    pub fn id_extension(
+        mut self,
+        parameters: &HashMap<&str, &str>,
+    ) -> ::std::result::Result<Session<T>, (Error, Client<T>)> {
+        if !parameters.is_empty() {
+            let args = parameters
+                .iter()
+                .map(|(k, v)| format!("{} {}", quote!(k), quote!(v)))
+                .collect::<Vec<String>>()
+                .join(" ");
+
+            ok_or_unauth_client_err!(
+                self.run_command_and_check_ok(&format!("ID ({})", args)),
+                self
+            );
+        }
+
+        Ok(Session::new(self.conn))
     }
 }
 
