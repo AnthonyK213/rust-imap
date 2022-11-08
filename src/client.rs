@@ -386,11 +386,9 @@ impl<T: Read + Write> Client<T> {
         Ok(Session::new(self.conn))
     }
 
-    /// .
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if .
+    /// The same function as [`login`](struct.Client.login) but with an extra
+    /// argument `ID` which contains information of the client.
+    /// See [`RFC 2971`](https://www.rfc-editor.org/rfc/rfc2971.html).
     pub fn login_with_id(
         mut self,
         username: impl AsRef<str>,
@@ -409,13 +407,14 @@ impl<T: Read + Write> Client<T> {
         );
 
         if !parameters.is_empty() {
-            let args: Vec<String> = parameters
+            let args = parameters
                 .iter()
                 .map(|(k, v)| format!("{} {}", quote!(k), quote!(v)))
-                .collect();
+                .collect::<Vec<String>>()
+                .join(" ");
 
             ok_or_unauth_client_err!(
-                self.run_command_and_check_ok(&format!("ID ({})", args.join(" "))),
+                self.run_command_and_check_ok(&format!("ID ({})", args)),
                 self
             );
         }
