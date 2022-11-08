@@ -125,10 +125,6 @@ fn validate_sequence_set(
     Ok(value)
 }
 
-fn _quote(arg: &str) -> String {
-    format!("\"{}\"", arg.replace("\\", "\\\\").replace("\"", "\\\""))
-}
-
 /// An authenticated IMAP session providing the usual IMAP commands. This type is what you get from
 /// a succesful login attempt.
 ///
@@ -415,7 +411,7 @@ impl<T: Read + Write> Client<T> {
         if !parameters.is_empty() {
             let args: Vec<String> = parameters
                 .iter()
-                .map(|(k, v)| format!("{} {}", _quote(k), _quote(v)))
+                .map(|(k, v)| format!("{} {}", quote!(k), quote!(v)))
                 .collect();
 
             ok_or_unauth_client_err!(
